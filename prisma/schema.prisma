@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Application {
+  id        String   @id @default(cuid())
+  stageName String
+  instagram String?
+  setUrl     String?
+  mediaUrl   String?
+  email      String?
+  createdAt DateTime @default(now())
+
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+
+  votes Vote[]
+}
+
+model Vote {
+  id            String      @id @default(cuid())
+  applicationId String
+  createdAt     DateTime    @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([createdAt])
+}
+
+model Visit {
+  id        String   @id @default(cuid())
+  path      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
