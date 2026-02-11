@@ -9,11 +9,14 @@ datasource db {
 
 model Application {
   id        String   @id @default(cuid())
+  firstName   String?
+  lastName    String?
   stageName String
   instagram String?
   setUrl     String?
   mediaUrl   String?
   email      String?
+  description String?
   createdAt DateTime @default(now())
 
   published   Boolean   @default(false)

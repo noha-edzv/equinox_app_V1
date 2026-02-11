@@ -25,6 +25,11 @@ export default function CandidaterPage() {
   async function handleSubmit() {
     setMsg(null);
 
+    if (!form.stageName.trim()) {
+      setMsg("Nom d'artiste requis.");
+      return;
+    }
+
     if (!form.under1h) {
       setMsg("Tu dois confirmer que ton set fait moins d’1h.");
       return;
@@ -42,14 +47,15 @@ export default function CandidaterPage() {
           instagram: form.instagram,
           email: form.email,
           description: form.description,
-          mediaUrl: form.mediaUrl, // pour l’instant lien
+          mediaUrl: form.mediaUrl,
           setUrl: form.setUrl,
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        setMsg(data?.error || "Erreur lors de l’envoi.");
+        setMsg(data?.details ? `${data.error} — ${data.details}` : (data?.error || "Erreur lors de l’envoi."));
         return;
       }
 
@@ -65,8 +71,8 @@ export default function CandidaterPage() {
         setUrl: "",
         under1h: false,
       });
-    } catch (e) {
-      setMsg("Erreur réseau. Réessaie.");
+    } catch (e: any) {
+      setMsg(e?.message || "Erreur réseau. Réessaie.");
     } finally {
       setLoading(false);
     }
@@ -81,7 +87,7 @@ export default function CandidaterPage() {
 
         <h1 className="mt-6 text-4xl font-bold">Candidater au tremplin</h1>
         <p className="mt-3 text-gray-400">
-          Ton set doit durer moins d’1h. Ta candidature apparaîtra en admin pour validation.
+          Ton set doit durer moins d’1h. Une fois ta candidature remplie, elle sera soumise à validation de l’association avant d’être publiée.
         </p>
 
         <form
@@ -132,18 +138,19 @@ export default function CandidaterPage() {
               onChange={(e) => setField("under1h", e.target.checked)}
             />
             <span className="text-sm text-gray-300">
-              Je confirme que mon set dure moins d’1h
+              Je confirme que mon set fait moins d’1h.
             </span>
           </div>
 
           <button
+            type="submit"
             disabled={loading}
             className="w-full py-4 rounded-full bg-white text-black font-medium hover:bg-gray-200 transition disabled:opacity-60"
           >
             {loading ? "Envoi..." : "Envoyer ma candidature"}
           </button>
 
-          {msg && <p className="text-sm text-gray-300">{msg}</p>}
+          {msg ? <p className="text-sm text-gray-300">{msg}</p> : null}
         </form>
       </div>
     </main>

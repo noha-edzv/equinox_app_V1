@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Fredoka } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
+import Image from "next/image";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,9 +28,16 @@ export default function RootLayout({
         {/* NAVBAR */}
         <header className="sticky top-0 z-50 border-b border-neutral-800 bg-black/80 backdrop-blur">
           <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
-            <Link href="/" className="font-bold tracking-tight">
-              Équinox
+            <Link href="/" className="flex items-center">
+             <Image
+              src="/equinox_fontVF2.png"
+              alt="Équinox"
+              width={105}
+              height={30}
+              priority
+              />
             </Link>
+
 
             <nav className="flex items-center gap-4 text-sm text-neutral-300">
               <Link className="hover:text-white" href="/">Accueil</Link>
