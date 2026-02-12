@@ -68,11 +68,11 @@ export async function GET() {
       { ok: true, applications: sorted },
       { headers: { "Cache-Control": "no-store, max-age=0" } }
     );
-  } catch (e) {
-    console.error("GET /api/applications", e);
-    return NextResponse.json(
-      { ok: false, error: "Erreur serveur" },
-      { status: 500, headers: { "Cache-Control": "no-store, max-age=0" } }
-    );
-  }
+  } catch (e: any) {
+  console.error("GET /api/applications", e);
+  return NextResponse.json(
+    { ok: false, error: "Erreur serveur", details: String(e?.message ?? e) },
+    { status: 500, headers: { "Cache-Control": "no-store, max-age=0" } }
+  );
+}
 }
