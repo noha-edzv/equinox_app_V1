@@ -6,6 +6,11 @@ export default function CandidaterPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
+  // Upload states
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -13,13 +18,57 @@ export default function CandidaterPage() {
     instagram: "",
     email: "",
     description: "",
-    mediaUrl: "",
+    mediaUrl: "", // <- URL Cloudinary ici
     setUrl: "",
     under1h: false,
   });
 
   function setField<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((p) => ({ ...p, [key]: value }));
+  }
+
+  function normalizeInstagram(v: string) {
+    const t = v.trim();
+    if (!t) return "";
+    return t.replace(/^@/, "");
+  }
+
+  async function uploadToCloudinary(file: File) {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
+      throw new Error("Cloudinary non configuré (variables NEXT_PUBLIC_* manquantes).");
+    }
+
+    // validations simples côté front
+    const maxMb = 8;
+    if (!file.type.startsWith("image/")) {
+      throw new Error("Le fichier doit être une image (jpg/png/webp).");
+    }
+    if (file.size > maxMb * 1024 * 1024) {
+      throw new Error(`Image trop lourde (max ${maxMb}MB).`);
+    }
+
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", uploadPreset);
+    // si ton preset a déjà folder=equninox c’est ok, sinon on force :
+    fd.append("folder", "equinox");
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: "POST",
+      body: fd,
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const err = data?.error?.message || "Erreur upload Cloudinary.";
+      throw new Error(err);
+    }
+
+    return data?.secure_url as string;
   }
 
   async function handleSubmit() {
@@ -36,7 +85,18 @@ export default function CandidaterPage() {
     }
 
     setLoading(true);
+
     try {
+      // 1) Upload photo si on en a une + si on n'a pas déjà une URL
+      let mediaUrl = form.mediaUrl;
+
+      if (photoFile && !mediaUrl) {
+        setUploading(true);
+        mediaUrl = await uploadToCloudinary(photoFile);
+        setField("mediaUrl", mediaUrl);
+      }
+
+      // 2) Envoi candidature en DB
       const res = await fetch("/api/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -44,10 +104,10 @@ export default function CandidaterPage() {
           firstName: form.firstName,
           lastName: form.lastName,
           stageName: form.stageName,
-          instagram: form.instagram,
+          instagram: normalizeInstagram(form.instagram),
           email: form.email,
           description: form.description,
-          mediaUrl: form.mediaUrl,
+          mediaUrl, // <- URL Cloudinary
           setUrl: form.setUrl,
         }),
       });
@@ -71,9 +131,12 @@ export default function CandidaterPage() {
         setUrl: "",
         under1h: false,
       });
+      setPhotoFile(null);
+      setPhotoPreview(null);
     } catch (e: any) {
       setMsg(e?.message || "Erreur réseau. Réessaie.");
     } finally {
+      setUploading(false);
       setLoading(false);
     }
   }
@@ -116,12 +179,41 @@ export default function CandidaterPage() {
             />
           </div>
 
-          <Field
-            label="Lien photo/vidéo (temporaire)"
-            value={form.mediaUrl}
-            onChange={(v) => setField("mediaUrl", v)}
-            placeholder="https://..."
-          />
+          {/* ✅ Photo upload Cloudinary */}
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">Photo (recommandé)</label>
+
+            <div className="rounded-lg bg-neutral-950 border border-neutral-800 p-4">
+              <input
+                type="file"
+                accept="image/*"
+                className="block w-full text-sm text-gray-300 file:mr-4 file:rounded-full file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-medium file:text-black hover:file:bg-gray-200"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setPhotoFile(f);
+                  setField("mediaUrl", ""); // reset url si l'utilisateur change l'image
+                  if (f) setPhotoPreview(URL.createObjectURL(f));
+                  else setPhotoPreview(null);
+                }}
+              />
+
+              {photoPreview ? (
+                <div className="mt-4 overflow-hidden rounded-xl border border-neutral-800">
+                  <img src={photoPreview} alt="Aperçu" className="w-full max-h-[320px] object-cover" />
+                </div>
+              ) : null}
+
+              {form.mediaUrl ? (
+                <p className="mt-3 text-xs text-green-300 break-all">
+                  ✅ Photo prête
+                </p>
+              ) : uploading ? (
+                <p className="mt-3 text-xs text-gray-300">Upload en cours…</p>
+              ) : (
+                <p className="mt-3 text-xs text-gray-500">jpg/png/webp • max 8MB</p>
+              )}
+            </div>
+          </div>
 
           <Field
             label="Lien du set (SoundCloud ou Drive)"
@@ -137,17 +229,15 @@ export default function CandidaterPage() {
               checked={form.under1h}
               onChange={(e) => setField("under1h", e.target.checked)}
             />
-            <span className="text-sm text-gray-300">
-              Je confirme que mon set fait moins d’1h.
-            </span>
+            <span className="text-sm text-gray-300">Je confirme que mon set fait moins d’1h.</span>
           </div>
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploading}
             className="w-full py-4 rounded-full bg-white text-black font-medium hover:bg-gray-200 transition disabled:opacity-60"
           >
-            {loading ? "Envoi..." : "Envoyer ma candidature"}
+            {uploading ? "Upload photo…" : loading ? "Envoi..." : "Envoyer ma candidature"}
           </button>
 
           {msg ? <p className="text-sm text-gray-300">{msg}</p> : null}
