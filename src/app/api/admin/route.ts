@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-type Action = "list" | "publish" | "unpublish" | "delete";
+type Action = "list" | "publish" | "unpublish" | "delete" | "edit" | "list";
+
+function clean(v: unknown) {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t.length ? t : null;
+}
 
 export async function GET(req: Request) {
   try {
@@ -70,6 +76,33 @@ export async function POST(req: Request) {
       await prisma.vote.deleteMany({ where: { applicationId: id } });
       await prisma.application.delete({ where: { id } });
       return NextResponse.json({ ok: true });
+    }
+
+    if (action === "edit") {
+      const data = body?.data ?? {};
+
+      const updateData: any = {
+        stageName: clean(data.stageName),
+        instagram: clean(data.instagram),
+        setUrl: clean(data.setUrl),
+        mediaUrl: clean(data.mediaUrl),
+        email: clean(data.email),
+        description: clean(data.description),
+        // si tu veux garder first/last plus tard :
+        // firstName: clean(data.firstName),
+        // lastName: clean(data.lastName),
+      };
+
+      // empêche de mettre stageName = null
+      if (!updateData.stageName) {
+        return NextResponse.json({ ok: false, error: "stageName requis" }, { status: 400 });
+      }
+
+      const updated = await prisma.application.update({
+        where: { id },
+        data: updateData,
+      });
+      return NextResponse.json({ ok: true, application: updated });
     }
 
     // list via POST si tu veux, sinon ignore

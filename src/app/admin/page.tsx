@@ -23,6 +23,58 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<"all" | "published" | "pending">("all");
   const [query, setQuery] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Application | null>(null);
+  const [editForm, setEditForm] = useState({
+   stageName: "",
+   instagram: "",
+    setUrl: "",
+    mediaUrl: "",
+    email: "",
+    description: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+    function openEdit(a: Application) {
+    setEditing(a);
+    setEditForm({
+      stageName: a.stageName ?? "",
+      instagram: a.instagram ?? "",
+      setUrl: a.setUrl ?? "",
+      mediaUrl: a.mediaUrl ?? "",
+      email: a.email ?? "",
+      description: a.description ?? "",
+    });
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "edit",
+          id: editing.id,
+          data: editForm,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data?.ok === false) {
+        throw new Error(data?.error || `Erreur API (${res.status})`);
+      }
+
+      setEditing(null);
+      await load();
+    } catch (e: any) {
+      alert(`Édit — erreur : ${String(e?.message ?? e)}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
 
   async function load() {
     setErr(null);
@@ -299,6 +351,13 @@ export default function AdminPage() {
                               Publier
                             </button>
                           )}
+                            <button
+                              onClick={() => openEdit(a)}
+                              className="rounded-xl border border-white/15 px-3 py-2 text-xs hover:bg-white/10"
+                            >
+                              Éditer
+                            </button>
+
 
                           <button
                             onClick={() => action("delete", a.id)}
