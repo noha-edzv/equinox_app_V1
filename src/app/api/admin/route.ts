@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-type Action = "list" | "publish" | "unpublish" | "delete" | "edit" | "list";
+type Action = "list" | "publish" | "unpublish" | "delete" | "edit" ;
 
 function clean(v: unknown) {
   if (typeof v !== "string") return null;

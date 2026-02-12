@@ -129,7 +129,7 @@ export default function ArtistCard({
               <iframe
                 title={`soundcloud-${app.id}`}
                 width="100%"
-                height="120"
+                height="135"
                 allow="autoplay"
                 src={soundcloudEmbedSrc(app.setUrl!)}
               />
