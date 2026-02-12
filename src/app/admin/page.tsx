@@ -23,6 +23,58 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<"all" | "published" | "pending">("all");
   const [query, setQuery] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Application | null>(null);
+  const [editForm, setEditForm] = useState({
+   stageName: "",
+   instagram: "",
+    setUrl: "",
+    mediaUrl: "",
+    email: "",
+    description: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+    function openEdit(a: Application) {
+    setEditing(a);
+    setEditForm({
+      stageName: a.stageName ?? "",
+      instagram: a.instagram ?? "",
+      setUrl: a.setUrl ?? "",
+      mediaUrl: a.mediaUrl ?? "",
+      email: a.email ?? "",
+      description: a.description ?? "",
+    });
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "edit",
+          id: editing.id,
+          data: editForm,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data?.ok === false) {
+        throw new Error(data?.error || `Erreur API (${res.status})`);
+      }
+
+      setEditing(null);
+      await load();
+    } catch (e: any) {
+      alert(`Édit — erreur : ${String(e?.message ?? e)}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
 
   async function load() {
     setErr(null);
@@ -299,6 +351,13 @@ export default function AdminPage() {
                               Publier
                             </button>
                           )}
+                            <button
+                              onClick={() => openEdit(a)}
+                              className="rounded-xl border border-white/15 px-3 py-2 text-xs hover:bg-white/10"
+                            >
+                              Éditer
+                            </button>
+
 
                           <button
                             onClick={() => action("delete", a.id)}
@@ -320,6 +379,105 @@ export default function AdminPage() {
           Astuce : “À valider” = published=false (invisible côté Vote).
         </p>
       </div>
+      {editing ? (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-neutral-950 p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">Éditer la candidature</h2>
+          <p className="mt-1 text-sm text-white/60">{editing.stageName}</p>
+        </div>
+
+        <button
+          onClick={() => setEditing(null)}
+          className="rounded-xl border border-white/15 px-3 py-2 text-xs hover:bg-white/10"
+        >
+          Fermer
+        </button>
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div>
+          <label className="text-xs text-white/60">Nom d’artiste (stageName)</label>
+          <input
+            value={editForm.stageName}
+            onChange={(e) => setEditForm((p) => ({ ...p, stageName: e.target.value }))}
+            className="mt-1 w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2 text-sm outline-none focus:border-white/30"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-white/60">Instagram</label>
+          <input
+            value={editForm.instagram}
+            onChange={(e) => setEditForm((p) => ({ ...p, instagram: e.target.value }))}
+            className="mt-1 w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2 text-sm outline-none focus:border-white/30"
+            placeholder="@pseudo ou pseudo"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-white/60">Lien SoundCloud / setUrl</label>
+          <input
+            value={editForm.setUrl}
+            onChange={(e) => setEditForm((p) => ({ ...p, setUrl: e.target.value }))}
+            className="mt-1 w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2 text-sm outline-none focus:border-white/30"
+            placeholder="https://soundcloud.com/..."
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-white/60">Image / mediaUrl</label>
+          <input
+            value={editForm.mediaUrl}
+            onChange={(e) => setEditForm((p) => ({ ...p, mediaUrl: e.target.value }))}
+            className="mt-1 w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2 text-sm outline-none focus:border-white/30"
+            placeholder="https://..."
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="text-xs text-white/60">Email</label>
+          <input
+            value={editForm.email}
+            onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+            className="mt-1 w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2 text-sm outline-none focus:border-white/30"
+            placeholder="email@..."
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="text-xs text-white/60">Description</label>
+          <textarea
+            value={editForm.description}
+            onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+            rows={6}
+            className="mt-1 w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2 text-sm outline-none focus:border-white/30"
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 flex items-center justify-end gap-2">
+        <button
+          onClick={() => setEditing(null)}
+          className="rounded-xl border border-white/15 px-4 py-2 text-sm hover:bg-white/10"
+          disabled={saving}
+        >
+          Annuler
+        </button>
+
+        <button
+          onClick={saveEdit}
+          className="rounded-xl bg-white text-black px-4 py-2 text-sm hover:opacity-90 disabled:opacity-60"
+          disabled={saving}
+        >
+          {saving ? "Sauvegarde…" : "Enregistrer"}
+        </button>
+      </div>
+    </div>
+  </div>
+) : null}
+
     </main>
   );
 }
