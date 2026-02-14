@@ -70,7 +70,7 @@ export default function ArtistCard({
         {/* Background image */}
         {app.mediaUrl ? (
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-40 group-hover:opacity-50 transition"
+            className="absolute inset-0 bg-cover bg-center opacity-200 group-hover:opacity-40 transition"
             style={{ backgroundImage: `url(${app.mediaUrl})` }}
           />
         ) : (
@@ -106,7 +106,7 @@ export default function ArtistCard({
             <div className="flex shrink-0 items-center gap-2">
               <button
                 onClick={() => setOpen(true)}
-                className="rounded-xl bg-white/10 px-4 py-2 text-sm hover:bg-white/15"
+                className="rounded-xl bg-black/10 px-4 py-2 text-sm hover:bg-white/15"
               >
                 Plus
               </button>
@@ -115,7 +115,7 @@ export default function ArtistCard({
                 <button
                   disabled={!onVote || voting}
                   onClick={() => onVote?.(app.id)}
-                  className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-50"
+                  className="rounded-xl bg-neutral-500 px-4 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-50"
                 >
                   {voting ? "Vote…" : "Voter"}
                 </button>

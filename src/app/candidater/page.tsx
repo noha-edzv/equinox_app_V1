@@ -142,7 +142,7 @@ export default function CandidaterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white px-6 py-16">
+    <main className="min-h-screen">
       <div className="max-w-2xl mx-auto">
         <a href="/" className="text-gray-400 hover:text-white">
           ← Retour
@@ -229,13 +229,13 @@ export default function CandidaterPage() {
               checked={form.under1h}
               onChange={(e) => setField("under1h", e.target.checked)}
             />
-            <span className="text-sm text-gray-300">Je confirme que mon set fait moins d’1h.</span>
+            <span className="text-sm text-gray-300">J'autorise Equinox à utiliser mon image dans le cadre du tremplin.</span>
           </div>
 
           <button
             type="submit"
             disabled={loading || uploading}
-            className="w-full py-4 rounded-full bg-white text-black font-medium hover:bg-gray-200 transition disabled:opacity-60"
+            className="w-full py-4 rounded-full bg-neutral-500 text-black font-medium hover:bg-gray-200 transition disabled:opacity-60"
           >
             {uploading ? "Upload photo…" : loading ? "Envoi..." : "Envoyer ma candidature"}
           </button>

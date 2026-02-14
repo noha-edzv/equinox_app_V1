@@ -100,7 +100,7 @@ export default async function HomePage() {
   })) as unknown as AppRow[];
 
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen">
       {/* HERO */}
       <section className="px-6 py-24 text-center">
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight font-equinox">
@@ -114,7 +114,7 @@ export default async function HomePage() {
         <div className="mt-10 flex items-center justify-center gap-3">
           <Link
             href="/vote"
-            className="px-6 py-3 rounded-full bg-white text-black font-medium hover:bg-gray-200 transition"
+            className="px-6 py-3 rounded-full bg-neutral-500 text-black font-medium hover:bg-gray-180 transition"
           >
             Voter
           </Link>
@@ -137,7 +137,7 @@ export default async function HomePage() {
 
         <Link
           href="/candidater"
-          className="inline-block mt-8 px-8 py-4 bg-white text-black font-medium rounded-full hover:bg-gray-200 transition"
+          className="inline-block mt-8 px-8 py-4 bg-neutral-500 text-black font-medium rounded-full hover:bg-gray-180 transition"
         >
           Candidater
         </Link>
@@ -187,7 +187,7 @@ export default async function HomePage() {
           <div className="mt-10 text-center">
             <Link
               href="/vote"
-              className="inline-block px-8 py-4 bg-white text-black font-medium rounded-full hover:bg-gray-200 transition"
+              className="inline-block px-8 py-4 bg-neutral-500 text-black font-medium rounded-full hover:bg-gray-200 transition"
             >
               Voir tous les candidats & voter
             </Link>

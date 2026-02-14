@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
-import { Inter, Fredoka } from "next/font/google";
+import { Inter, Fredoka, Poppins } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import Image from "next/image";
 
 const inter = Inter({ subsets: ["latin"] });
+const poppins = Poppins({
+   subsets: ["latin"],
+    weight: ["200", "300", "400", "500", "600", "700"],
+    display: "swap",
+}); 
 
 const fredoka = Fredoka({
   subsets: ["latin"],
@@ -13,9 +18,10 @@ const fredoka = Fredoka({
 });
 
 export const metadata: Metadata = {
-  title: "Équinox",
+  title: "Equinox",
   description: "Festival étudiant – Tremplin DJ",
 };
+
 
 export default function RootLayout({
   children,
@@ -23,8 +29,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
-      <body className="min-h-screen bg-black text-white">
+    <html lang="fr" className="dark">
+      <body className="min-h-screen">
         {/* NAVBAR */}
         <header className="sticky top-0 z-50 border-b border-neutral-800 bg-black/80 backdrop-blur">
           <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
