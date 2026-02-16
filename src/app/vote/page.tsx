@@ -66,10 +66,17 @@ export default function VotePage() {
         body: JSON.stringify({ applicationId }),
       });
 
+      if (res.status === 409) {
+       alert("Tu as déjà voté pour cet artiste aujourd’hui ✅ Reviens demain !");
+        return;
+      }
+
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(`Vote failed: ${res.status} ${txt}`);
       }
+
+      const data = await res.json();
 
       // update local vote count
       setApps((prev) =>

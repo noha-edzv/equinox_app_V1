@@ -22,13 +22,14 @@ model Application {
 }
 
 model Vote {
-  id            String      @id @default(cuid())
-  createdAt     DateTime    @default(now())
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
   applicationId String
+  voterKey      String   // <- redevient obligatoire
+
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
-  @@index([applicationId])
-  @@index([createdAt])
+  @@unique([applicationId, voterKey])
 }
 
 model Visit {
