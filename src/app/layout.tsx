@@ -47,6 +47,7 @@ export default function RootLayout({
 
             <nav className="flex items-center gap-4 text-sm text-neutral-300">
               <Link className="hover:text-white" href="/">Accueil</Link>
+              <Link href="/presentation">Présentation</Link>
               <Link className="hover:text-white" href="/candidater">Candidater</Link>
               <Link className="hover:text-white" href="/vote">Vote</Link>
             </nav>

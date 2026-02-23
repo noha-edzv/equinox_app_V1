@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type ModalState =
+  | { status: "idle" }
+  | { status: "success"; title: string; message: string }
+  | { status: "error"; title: string; message: string; details?: string };
 
 export default function CandidaterPage() {
+  const router = useRouter();
+
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -10,6 +18,10 @@ export default function CandidaterPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // ✅ modal result
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalState, setModalState] = useState<ModalState>({ status: "idle" });
 
   const [form, setForm] = useState({
     firstName: "",
@@ -30,8 +42,48 @@ export default function CandidaterPage() {
   function normalizeInstagram(v: string) {
     const t = v.trim();
     if (!t) return "";
+    if (t.startsWith("http")) return t; // si l'utilisateur colle l'URL, on garde
     return t.replace(/^@/, "");
   }
+
+  function isValidUrl(url: string) {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // ✅ validation live (pour bloquer le submit + message sous champ si tu veux)
+  const validation = useMemo(() => {
+    const errors: string[] = [];
+
+    const stage = form.stageName.trim();
+    const ig = normalizeInstagram(form.instagram);
+    const set = form.setUrl.trim();
+
+    if (!stage) errors.push("Nom d'artiste requis.");
+    if (!ig) errors.push("Instagram est obligatoire.");
+    if (!set) errors.push("Lien du set obligatoire (SoundCloud/Drive).");
+
+    if (set && !isValidUrl(set)) errors.push("Le lien du set n’est pas une URL valide.");
+
+    // (Optionnel mais conseillé) : limiter à soundcloud/drive
+    if (set && isValidUrl(set)) {
+      const lower = set.toLowerCase();
+      const ok =
+        lower.includes("soundcloud.com") ||
+        lower.includes("on.soundcloud.com") ||
+        lower.includes("drive.google.com") ||
+        lower.includes("dropbox.com");
+      if (!ok) errors.push("Le lien du set doit venir de SoundCloud ou Google Drive (ou équivalent).");
+    }
+
+    if (!form.under1h) errors.push("Tu dois valider l'utilisation de ton image pour le tremplin.");
+
+    return { ok: errors.length === 0, errors };
+  }, [form.stageName, form.instagram, form.setUrl, form.under1h]);
 
   async function uploadToCloudinary(file: File) {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -53,7 +105,6 @@ export default function CandidaterPage() {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("upload_preset", uploadPreset);
-    // si ton preset a déjà folder=equninox c’est ok, sinon on force :
     fd.append("folder", "equinox");
 
     const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
@@ -71,18 +122,65 @@ export default function CandidaterPage() {
     return data?.secure_url as string;
   }
 
+  function openErrorModal(message: string, details?: string) {
+    setModalState({
+      status: "error",
+      title: "Candidature non envoyée ❌",
+      message,
+      details,
+    });
+    setModalOpen(true);
+  }
+
+  function openSuccessModal() {
+    setModalState({
+      status: "success",
+      title: "Candidature envoyée ✅",
+      message: "On a bien reçu ta candidature. Elle sera validée par l’équipe avant publication.",
+    });
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+
+    // ✅ si succès => home
+    if (modalState.status === "success") {
+      router.push("/");
+      return;
+    }
+
+    // ✅ si erreur => on ne reset rien => l’utilisateur retrouve le form rempli
+  }
+
   async function handleSubmit() {
     setMsg(null);
 
-    if (!form.stageName.trim()) {
-      setMsg("Nom d'artiste requis.");
+    // ✅ bloque direct
+    if (!validation.ok) {
+      openErrorModal(
+        "Il manque des infos obligatoires ou un champ est invalide.",
+        validation.errors.join("\n")
+      );
       return;
     }
+    // Avant setLoading(true) ou juste après validation.ok
+  const validateRes = await fetch("/api/validate-links", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ instagram: form.instagram, setUrl: form.setUrl }),
+  });
 
-    if (!form.under1h) {
-      setMsg("Tu dois confirmer que ton set fait moins d’1h.");
-      return;
-    }
+  const validateData = await validateRes.json().catch(() => ({}));
+
+  if (!validateRes.ok) {
+    openErrorModal(
+      validateData?.message || "Liens invalides.",
+      validateData?.field ? `Champ: ${validateData.field}` : validateData?.details ? JSON.stringify(validateData.details, null, 2) : undefined
+    );
+    return;
+  }
+
 
     setLoading(true);
 
@@ -104,22 +202,29 @@ export default function CandidaterPage() {
           firstName: form.firstName,
           lastName: form.lastName,
           stageName: form.stageName,
-          instagram: normalizeInstagram(form.instagram),
+          instagram: normalizeInstagram(form.instagram), // ✅ obligatoire
           email: form.email,
           description: form.description,
           mediaUrl, // <- URL Cloudinary
-          setUrl: form.setUrl,
+          setUrl: form.setUrl, // ✅ obligatoire
         }),
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setMsg(data?.details ? `${data.error} — ${data.details}` : (data?.error || "Erreur lors de l’envoi."));
+        // on affiche une erreur claire + le détail si tu le renvoies côté API
+        const main = data?.error || data?.message || "Erreur lors de l’envoi.";
+        const details = data?.details || (data ? JSON.stringify(data, null, 2) : undefined);
+        openErrorModal(main, details);
         return;
       }
 
-      setMsg("✅ Candidature envoyée ! Elle sera validée par l’équipe.");
+      // ✅ succès : modal + (optionnel) reset
+      openSuccessModal();
+
+      // Tu peux reset ici, mais vu que tu rediriges au close modal, pas obligatoire.
+      // Je le laisse (c’est propre si tu veux rester sur la page sans redirect).
       setForm({
         firstName: "",
         lastName: "",
@@ -134,12 +239,14 @@ export default function CandidaterPage() {
       setPhotoFile(null);
       setPhotoPreview(null);
     } catch (e: any) {
-      setMsg(e?.message || "Erreur réseau. Réessaie.");
+      openErrorModal("Erreur réseau. Réessaie.", e?.message);
     } finally {
       setUploading(false);
       setLoading(false);
     }
   }
+
+  const disableSubmit = loading || uploading || !validation.ok;
 
   return (
     <main className="min-h-screen">
@@ -165,8 +272,15 @@ export default function CandidaterPage() {
             <Field label="Nom" value={form.lastName} onChange={(v) => setField("lastName", v)} />
           </div>
 
-          <Field label="Nom d'artiste" value={form.stageName} onChange={(v) => setField("stageName", v)} />
-          <Field label="Instagram" value={form.instagram} onChange={(v) => setField("instagram", v)} placeholder="@toncompte" />
+          <Field label="Nom d'artiste *" value={form.stageName} onChange={(v) => setField("stageName", v)} />
+
+          <Field
+            label="Instagram *"
+            value={form.instagram}
+            onChange={(v) => setField("instagram", v)}
+            placeholder="@toncompte ou lien"
+          />
+
           <Field label="Email" type="email" value={form.email} onChange={(v) => setField("email", v)} />
 
           <div>
@@ -191,7 +305,7 @@ export default function CandidaterPage() {
                 onChange={(e) => {
                   const f = e.target.files?.[0] ?? null;
                   setPhotoFile(f);
-                  setField("mediaUrl", ""); // reset url si l'utilisateur change l'image
+                  setField("mediaUrl", "");
                   if (f) setPhotoPreview(URL.createObjectURL(f));
                   else setPhotoPreview(null);
                 }}
@@ -204,9 +318,7 @@ export default function CandidaterPage() {
               ) : null}
 
               {form.mediaUrl ? (
-                <p className="mt-3 text-xs text-green-300 break-all">
-                  ✅ Photo prête
-                </p>
+                <p className="mt-3 text-xs text-green-300 break-all">✅ Photo prête</p>
               ) : uploading ? (
                 <p className="mt-3 text-xs text-gray-300">Upload en cours…</p>
               ) : (
@@ -216,7 +328,7 @@ export default function CandidaterPage() {
           </div>
 
           <Field
-            label="Lien du set (SoundCloud ou Drive)"
+            label="Lien du set (SoundCloud ou Drive) *"
             value={form.setUrl}
             onChange={(v) => setField("setUrl", v)}
             placeholder="https://soundcloud.com/..."
@@ -232,9 +344,16 @@ export default function CandidaterPage() {
             <span className="text-sm text-gray-300">J'autorise Equinox à utiliser mon image dans le cadre du tremplin.</span>
           </div>
 
+          {!validation.ok ? (
+            <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-white/70 whitespace-pre-wrap">
+              <div className="font-semibold text-white mb-2">À corriger avant d’envoyer :</div>
+              {validation.errors.map((e) => `• ${e}`).join("\n")}
+            </div>
+          ) : null}
+
           <button
             type="submit"
-            disabled={loading || uploading}
+            disabled={disableSubmit}
             className="w-full py-4 rounded-full bg-neutral-500 text-black font-medium hover:bg-gray-200 transition disabled:opacity-60"
           >
             {uploading ? "Upload photo…" : loading ? "Envoi..." : "Envoyer ma candidature"}
@@ -243,7 +362,66 @@ export default function CandidaterPage() {
           {msg ? <p className="text-sm text-gray-300">{msg}</p> : null}
         </form>
       </div>
+
+      <ResultModal open={modalOpen} state={modalState} onClose={closeModal} />
     </main>
+  );
+}
+
+function ResultModal({
+  open,
+  state,
+  onClose,
+}: {
+  open: boolean;
+  state: ModalState;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+
+  const isSuccess = state.status === "success";
+  const isError = state.status === "error";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+      <div className="w-full max-w-md rounded-2xl bg-neutral-950 border border-white/10 p-6 shadow-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-white">
+              {state.status !== "idle" ? state.title : "Info"}
+            </h3>
+
+            {state.status !== "idle" ? (
+              <p className="mt-2 text-sm text-white/70 whitespace-pre-wrap">{state.message}</p>
+            ) : null}
+
+            {isError && state.details ? (
+              <p className="mt-3 text-xs text-white/50 whitespace-pre-wrap">{state.details}</p>
+            ) : null}
+          </div>
+
+          <button
+            onClick={onClose}
+            className="rounded-lg px-3 py-1 text-sm text-white/80 hover:bg-white/10"
+          >
+            Fermer
+          </button>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={onClose}
+            className="rounded-xl bg-white text-black px-4 py-2 text-sm font-semibold hover:opacity-90"
+          >
+            OK
+          </button>
+        </div>
+
+        {isSuccess ? (
+          <p className="mt-3 text-xs text-white/50">Tu seras redirigé(e) vers l’accueil en fermant.</p>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
