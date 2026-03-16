@@ -125,8 +125,12 @@ export default async function HomePage() {
           >
             Candidater
           </Link>
+
         </div>
       </section>
+      <div className="mt-12 mb-12 p-8 rounded-2xl border /10 bg-white/5 text-center max-w-2xl mx-auto">
+  
+
 
       {/* TREMPLIN */}
       <section className="px-6 py-20 bg-neutral-900 text-center">

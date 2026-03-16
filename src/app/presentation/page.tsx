@@ -158,7 +158,7 @@ export default function PresentationPage() {
           <StepCard
             step="03"
             title="Soirée Tremplin"
-            desc="Les 5 à 7 artistes ayant le plus de voix sont invités à mixer lors d’une soirée dédiée."
+            desc="Les 3 artistes ayant le plus de voix sont invités à mixer lors d’une soirée dédiée."
           />
           <StepCard
             step="04"
